@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ITI Daily Attendance System</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase JS SDK as ES modules (does NOT run scripts here on GitHub, just exposes config) -->
+  <script type="module">
+    // These imports only expose config and services
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAy1RcvyUkexEfFAWX8De3tF01F3X2092w",
+      authDomain: "iti-attendance-system-6d54a.firebaseapp.com",
+      projectId: "iti-attendance-system-6d54a",
+      storageBucket: "iti-attendance-system-6d54a.firebasestorage.app",
+      messagingSenderId: "862789334597",
+      appId: "1:862789334597:web:f9a135c682afb08662d52c"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.firebaseAuth = getAuth(app);
+    window.firebaseDb = getFirestore(app);
+  </script>
+</head>
+<body>
+  <!-- Login Modal (auth required before seeing main app) -->
+  <div id="loginContainer" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:9999;">
+    <div style="background:#fff;padding:32px;border-radius:12px;max-width:360px;width:90%;">
+      <h2 style="margin-bottom:18px;">Login</h2>
+      <input id="email" type="email" placeholder="Email" style="width:100%;padding:10px;margin:10px 0;">
+      <input id="password" type="password" placeholder="Password" style="width:100%;padding:10px;margin-bottom:10px;">
+      <button id="loginBtn" style="width:100%;padding:10px;">Login</button>
+      <p id="loginError" style="color:red;display:none;margin-top:10px;"></p>
+    </div>
+  </div>
+
+  <div class="navbar">
+    <div class="navbar-brand"><h1>ITI Daily Attendance Management System</h1></div>
+    <div class="navbar-links">
+      <p>Academic Year: <span id="academicYear">2024-25</span></p>
+      <p>Date: <span id="currentDate"></span></p>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+  </div>
+
+  <div class="container" style="display:none;">
+    <div class="control-panel">
+      <h2>Attendance Control Panel</h2>
+      <div class="button-group">
+        <button onclick="showAddTradeForm()">Add Trade</button>
+        <button onclick="showAddStudentForm()">Add Student</button>
+        <button onclick="toggleReports()">View Records</button>
+      </div>
+    </div>
+
+    <!-- Attendance Section -->
+    <div id="attendanceSection">
+      <h2>Mark Daily Attendance</h2>
+      <div class="form-group">
+        <label for="tradeSelector">Select Trade:</label>
+        <select id="tradeSelector" onchange="showStudentsList()">
+          <option value="">Choose Trade</option>
+        </select>
+      </div>
+      <div id="studentsContainer"><ul id="studentsList"></ul></div>
+      <div id="summarySection">
+        <h3>Daily Summary</h3>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span class="summary-label">Total Students:</span>
+            <span id="totalStudents" class="summary-value">0</span>
+          </div>
+          <div class="summary-card present">
+            <span class="summary-label">Present:</span>
+            <span id="totalPresent" class="summary-value">0</span>
+          </div>
+          <div class="summary-card absent">
+            <span class="summary-label">Absent:</span>
+            <span id="totalAbsent" class="summary-value">0</span>
+          </div>
+          <div class="summary-card leave">
+            <span class="summary-label">On Leave:</span>
+            <span id="totalLeave" class="summary-value">0</span>
+          </div>
+        </div>
+      </div>
+      <button id="submitAttendance" onclick="submitAttendance()">Submit Daily Attendance</button>
+    </div>
+
+    <!-- Records Section (separates Present, Absent, Leave) -->
+    <div id="recordsSection" style="display:none;">
+      <h2>Attendance Records</h2>
+      <div class="form-group">
+        <label for="recordsTradeSelector">Select Trade:</label>
+        <select id="recordsTradeSelector">
+          <option value="">All Trades</option>
+        </select>
+        <label for="recordsDateSelector">Select Date:</label>
+        <input type="date" id="recordsDateSelector">
+        <button onclick="showRecords()">Show</button>
+      </div>
+      <div id="recordsTable"></div>
+    </div>
+  </div>
+
+  <!-- Add Trade Popup -->
+  <div id="addTradePopup" class="popup" style="display:none;">
+    <div class="popup-content">
+      <h2>Add New Trade</h2>
+      <div class="form-group">
+        <label for="newTradeName">Trade Name:</label>
+        <input type="text" id="newTradeName" placeholder="e.g., COPA, Electrician, Fitter">
+      </div>
+      <div class="form-group">
+        <label for="newTradeCode">Trade Code:</label>
+        <input type="text" id="newTradeCode" placeholder="e.g., COP, ELE, FIT">
+      </div>
+      <div class="button-group">
+        <button onclick="addTrade()">Add Trade</button>
+        <button onclick="closePopup()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Student Popup -->
+  <div id="addStudentPopup" class="popup" style="display:none;">
+    <div class="popup-content">
+      <h2>Add New Student</h2>
+      <div class="form-group">
+        <label for="studentTrade">Select Trade:</label>
+        <select id="studentTrade"></select>
+      </div>
+      <div class="form-group">
+        <label for="newStudentName">Student Name:</label>
+        <input type="text" id="newStudentName" placeholder="Enter full name">
+      </div>
+      <div class="form-group">
+        <label for="newStudentYear">Year:</label>
+        <select id="newStudentYear">
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="newStudentMobile">Mobile Number:</label>
+        <input type="text" id="newStudentMobile" placeholder="Enter mobile number">
+      </div>
+      <div class="form-group">
+        <label for="newStudentAdmission">Admission Date:</label>
+        <input type="date" id="newStudentAdmission">
+      </div>
+      <div class="form-group">
+        <label for="newStudentShift">Shift:</label>
+        <select id="newStudentShift">
+          <option value="Morning">Morning</option>
+          <option value="Evening">Evening</option>
