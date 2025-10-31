@@ -212,11 +212,6 @@ window.submitAttendance = async function() {
   await window.showStudentsList();
 };
 
-  await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
-  await setDoc(doc(db, "attendanceLocks", `${tradeCode}_${today}`), { locked: true });
-  alert("Attendance submitted and locked for today!");
-  await window.showStudentsList();
- };
 
 function getToday() {
   return new Date().toISOString().slice(0, 10);
@@ -319,6 +314,7 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
+
 
 
 
