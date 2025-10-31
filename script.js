@@ -11,6 +11,19 @@ const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
+// --- Helper for flexible date format ---
+function toIsoDate(dateStr) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const m = parts[0].padStart(2, '0');
+    const d = parts[1].padStart(2, '0');
+    const y = parts[2];
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+
 // ------------------- ALL window functions BEFORE logic -------------------
 window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
@@ -196,9 +209,12 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
+// --- Updated View Records function with date conversion ---
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
-  const date = document.getElementById('recordsDateSelector').value;
+  const rawDate = document.getElementById('recordsDateSelector').value;
+  const date = toIsoDate(rawDate);
+
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
 
