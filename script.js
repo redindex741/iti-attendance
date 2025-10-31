@@ -1,7 +1,5 @@
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-import {
-  collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where
-} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
@@ -13,7 +11,27 @@ const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// ------------------- ALL window functions BEFORE logic -------------------
+// Flexible date format conversion
+function toIsoDate(dateStr) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const m = parts[0].padStart(2, '0');
+    const d = parts[1].padStart(2, '0');
+    const y = parts[2];
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+
+// Always use IST for attendance
+function getToday() {
+  const now = new Date();
+  const offsetMs = 5.5 * 60 * 60 * 1000; // 5 hours 30 min in ms
+  const local = new Date(now.getTime() + offsetMs);
+  return local.toISOString().slice(0, 10);
+}
+
 window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
   const studentTrade = document.getElementById('studentTrade');
@@ -41,12 +59,15 @@ function addOption(select, value, text) {
 window.showAddTradeForm = function() {
   document.getElementById('addTradePopup').style.display = 'block';
 };
+
 window.showAddStudentForm = function() {
   document.getElementById('addStudentPopup').style.display = 'block';
 };
+
 window.closePopup = function() {
   document.getElementById('addTradePopup').style.display = 'none';
   document.getElementById('addStudentPopup').style.display = 'none';
+  document.getElementById('removeTradePopup').style.display = 'none';
 };
 
 window.toggleReports = function() {
@@ -59,6 +80,30 @@ window.toggleReports = function() {
     recSec.style.display = 'none';
     attSec.style.display = 'block';
   }
+};
+
+window.showRemoveTradeForm = async function() {
+  document.getElementById('removeTradePopup').style.display = 'block';
+  const select = document.getElementById('removeTradeSelector');
+  select.innerHTML = '<option value="">Choose Trade</option>';
+  const tradesSnapshot = await getDocs(collection(db, 'trades'));
+  tradesSnapshot.forEach(docSnap => {
+    const trade = docSnap.data();
+    const opt = document.createElement("option");
+    opt.value = docSnap.id;
+    opt.textContent = `${trade.name} (${trade.code})`;
+    select.appendChild(opt);
+  });
+};
+
+window.removeTrade = async function() {
+  const tradeCode = document.getElementById('removeTradeSelector').value;
+  if (!tradeCode) return alert('Please select a trade to remove.');
+  if (!confirm("Are you sure you want to delete this trade? This will NOT delete students or attendance under this trade.")) return;
+  await deleteDoc(doc(db, "trades", tradeCode));
+  window.closePopup();
+  await window.loadTrades();
+  alert('Trade removed');
 };
 
 window.addTrade = async function() {
@@ -153,17 +198,26 @@ window.removeStudent = async function(studentId) {
   await window.showStudentsList();
 };
 
+// THIS IS THE MAIN FIXED FUNCTION, no locks, local IST time!
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
-  await setDoc(doc(db, "attendanceLocks", `${tradeCode}_${today}`), { locked: true });
-  alert("Attendance submitted and locked for today!");
+
+  const items = Array.from(document.querySelectorAll("#studentsList .student-item"));
+  const attendance = items.map(item =>
+    item.classList.contains("present")
+      ? "present"
+      : item.classList.contains("absent")
+      ? "absent"
+      : item.classList.contains("leave")
+      ? "leave"
+      : ""
+  );
+
+  await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
+  alert("Attendance submitted!");
   await window.showStudentsList();
 };
-
-function getToday() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function updateSummary(attendance) {
   document.getElementById("totalStudents").textContent = attendance.length;
@@ -172,18 +226,24 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
-// Excel-styled attendance tables for View Records
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
-  const date = document.getElementById('recordsDateSelector').value;
+  const rawDate = document.getElementById('recordsDateSelector').value;
+  const date = toIsoDate(rawDate);
+
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-  const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
+
+  let studentsQuery;
+  if (!tradeCode) {
+    studentsQuery = collection(db, 'students');
+  } else {
+    studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
+  }
   const studentsSnapshot = await getDocs(studentsQuery);
   const students = [];
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
 
-  // Split into Present, Absent, Leave with all data
   let present = [], absent = [], leave = [];
   for (let i = 0; i < students.length; i++) {
     const status = attendance[i];
@@ -226,9 +286,6 @@ window.showRecords = async function() {
     makeTable(leave, "Leave");
 };
 
-// ---------------------- END all window-attached functions ----------------------
-
-// Login event
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
