@@ -193,11 +193,6 @@ window.removeStudent = async function(studentId) {
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
-  // Get all students for the trade, build status array
-  const studentsQuery = query(collection(db, "students"), where("tradeCode", "==", tradeCode));
-  const studentsSnapshot = await getDocs(studentsQuery);
-  const students = [];
-  studentsSnapshot.forEach(docSnap => students.push({ ...docSnap.data() }));
 
   // Build attendance status array from student items' classes (present/absent/leave)
   const items = Array.from(document.querySelectorAll("#studentsList .student-item"));
@@ -210,6 +205,13 @@ window.submitAttendance = async function() {
       ? "leave"
       : ""
   );
+
+  await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
+  await setDoc(doc(db, "attendanceLocks", `${tradeCode}_${today}`), { locked: true });
+  alert("Attendance submitted and locked for today!");
+  await window.showStudentsList();
+};
+
 
   await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
   await setDoc(doc(db, "attendanceLocks", `${tradeCode}_${today}`), { locked: true });
@@ -319,4 +321,5 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
+
 
