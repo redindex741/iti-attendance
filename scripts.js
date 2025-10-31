@@ -1,3 +1,4 @@
+console.log("Script.js loaded!");
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import {
   collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where
@@ -264,3 +265,4 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
+
