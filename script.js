@@ -1,8 +1,16 @@
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
+// Firebase connections from index.html <script type="module">
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
+
+// UI elements (FIX: define at top)
+const loginContainer = document.getElementById('loginContainer');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const appContainer = document.querySelector('.container');
+const logoutBtn = document.getElementById('logoutBtn');
 
 // Flexible date format conversion
 function toIsoDate(dateStr) {
