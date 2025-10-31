@@ -172,25 +172,18 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
-// Updated for multi-trade view (shows all students for "All Trades")
+// Excel-styled attendance tables for View Records
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
   const date = document.getElementById('recordsDateSelector').value;
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-
-  let studentsQuery;
-  if (!tradeCode) {
-    // "All Trades" selected: fetch ALL students
-    studentsQuery = collection(db, 'students');
-  } else {
-    // Specific trade: filter
-    studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
-  }
+  const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   const students = [];
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
 
+  // Split into Present, Absent, Leave with all data
   let present = [], absent = [], leave = [];
   for (let i = 0; i < students.length; i++) {
     const status = attendance[i];
