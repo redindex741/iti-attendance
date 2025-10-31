@@ -9,7 +9,7 @@ const db = window.firebaseDb;
 const loginContainer = document.getElementById('loginContainer');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
-const appContainer = document.querySelector('.container');
+const appContainer = document.querySelector('container');
 const logoutBtn = document.getElementById('logoutBtn');
 
 // Flexible date format conversion
@@ -312,3 +312,4 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
+
