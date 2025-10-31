@@ -1,30 +1,19 @@
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import {
+  collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-// Firebase connections from index.html <script type="module">
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
 
-// UI elements (FIX: define at top)
+// UI elements
 const loginContainer = document.getElementById('loginContainer');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
-const appContainer = document.querySelector('container');
+const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Flexible date format conversion
-function toIsoDate(dateStr) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const m = parts[0].padStart(2, '0');
-    const d = parts[1].padStart(2, '0');
-    const y = parts[2];
-    return `${y}-${m}-${d}`;
-  }
-  return dateStr;
-}
-
+// ------------------- ALL window functions BEFORE logic -------------------
 window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
   const studentTrade = document.getElementById('studentTrade');
@@ -52,15 +41,12 @@ function addOption(select, value, text) {
 window.showAddTradeForm = function() {
   document.getElementById('addTradePopup').style.display = 'block';
 };
-
 window.showAddStudentForm = function() {
   document.getElementById('addStudentPopup').style.display = 'block';
 };
-
 window.closePopup = function() {
   document.getElementById('addTradePopup').style.display = 'none';
   document.getElementById('addStudentPopup').style.display = 'none';
-  document.getElementById('removeTradePopup').style.display = 'none';
 };
 
 window.toggleReports = function() {
@@ -73,30 +59,6 @@ window.toggleReports = function() {
     recSec.style.display = 'none';
     attSec.style.display = 'block';
   }
-};
-
-window.showRemoveTradeForm = async function() {
-  document.getElementById('removeTradePopup').style.display = 'block';
-  const select = document.getElementById('removeTradeSelector');
-  select.innerHTML = '<option value="">Choose Trade</option>';
-  const tradesSnapshot = await getDocs(collection(db, 'trades'));
-  tradesSnapshot.forEach(docSnap => {
-    const trade = docSnap.data();
-    const opt = document.createElement("option");
-    opt.value = docSnap.id;
-    opt.textContent = `${trade.name} (${trade.code})`;
-    select.appendChild(opt);
-  });
-};
-
-window.removeTrade = async function() {
-  const tradeCode = document.getElementById('removeTradeSelector').value;
-  if (!tradeCode) return alert('Please select a trade to remove.');
-  if (!confirm("Are you sure you want to delete this trade? This will NOT delete students or attendance under this trade.")) return;
-  await deleteDoc(doc(db, "trades", tradeCode));
-  window.closePopup();
-  await window.loadTrades();
-  alert('Trade removed');
 };
 
 window.addTrade = async function() {
@@ -194,20 +156,6 @@ window.removeStudent = async function(studentId) {
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
-
-  // Build status from UI
-  const items = Array.from(document.querySelectorAll("#studentsList .student-item"));
-  const attendance = items.map(item =>
-    item.classList.contains("present")
-      ? "present"
-      : item.classList.contains("absent")
-      ? "absent"
-      : item.classList.contains("leave")
-      ? "leave"
-      : ""
-  );
-
-  await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
   await setDoc(doc(db, "attendanceLocks", `${tradeCode}_${today}`), { locked: true });
   alert("Attendance submitted and locked for today!");
   await window.showStudentsList();
@@ -224,24 +172,18 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
+// Excel-styled attendance tables for View Records
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
-  const rawDate = document.getElementById('recordsDateSelector').value;
-  const date = toIsoDate(rawDate);
-
+  const date = document.getElementById('recordsDateSelector').value;
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-
-  let studentsQuery;
-  if (!tradeCode) {
-    studentsQuery = collection(db, 'students');
-  } else {
-    studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
-  }
+  const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   const students = [];
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
 
+  // Split into Present, Absent, Leave with all data
   let present = [], absent = [], leave = [];
   for (let i = 0; i < students.length; i++) {
     const status = attendance[i];
@@ -284,6 +226,9 @@ window.showRecords = async function() {
     makeTable(leave, "Leave");
 };
 
+// ---------------------- END all window-attached functions ----------------------
+
+// Login event
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
@@ -312,4 +257,3 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
-
