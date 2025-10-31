@@ -11,7 +11,7 @@ const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// --- Helper for flexible date format ---
+// Flexible date format conversion
 function toIsoDate(dateStr) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const parts = dateStr.split('/');
@@ -24,7 +24,6 @@ function toIsoDate(dateStr) {
   return dateStr;
 }
 
-// ------------------- ALL window functions BEFORE logic -------------------
 window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
   const studentTrade = document.getElementById('studentTrade');
@@ -52,9 +51,11 @@ function addOption(select, value, text) {
 window.showAddTradeForm = function() {
   document.getElementById('addTradePopup').style.display = 'block';
 };
+
 window.showAddStudentForm = function() {
   document.getElementById('addStudentPopup').style.display = 'block';
 };
+
 window.closePopup = function() {
   document.getElementById('addTradePopup').style.display = 'none';
   document.getElementById('addStudentPopup').style.display = 'none';
@@ -77,7 +78,6 @@ window.showRemoveTradeForm = async function() {
   document.getElementById('removeTradePopup').style.display = 'block';
   const select = document.getElementById('removeTradeSelector');
   select.innerHTML = '<option value="">Choose Trade</option>';
-  // Load trade list
   const tradesSnapshot = await getDocs(collection(db, 'trades'));
   tradesSnapshot.forEach(docSnap => {
     const trade = docSnap.data();
@@ -194,7 +194,6 @@ window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
 
-  // Build attendance status array from student items' classes (present/absent/leave)
   const items = Array.from(document.querySelectorAll("#studentsList .student-item"));
   const attendance = items.map(item =>
     item.classList.contains("present")
@@ -212,7 +211,6 @@ window.submitAttendance = async function() {
   await window.showStudentsList();
 };
 
-
 function getToday() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -224,7 +222,6 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
-// --- Updated View Records function with date conversion ---
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
   const rawDate = document.getElementById('recordsDateSelector').value;
@@ -285,7 +282,6 @@ window.showRecords = async function() {
     makeTable(leave, "Leave");
 };
 
-// Login event
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
@@ -314,7 +310,3 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
-
-
-
-
