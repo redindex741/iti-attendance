@@ -11,7 +11,6 @@ const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Flexible date format conversion
 function toIsoDate(dateStr) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const parts = dateStr.split('/');
@@ -96,14 +95,34 @@ window.showRemoveTradeForm = async function() {
   });
 };
 
+// FULLY UPDATED TO DELETE STUDENTS AND ATTENDANCE WHEN TRADE IS REMOVED
 window.removeTrade = async function() {
   const tradeCode = document.getElementById('removeTradeSelector').value;
   if (!tradeCode) return alert('Please select a trade to remove.');
-  if (!confirm("Are you sure you want to delete this trade? This will NOT delete students or attendance under this trade.")) return;
+  if (!confirm("Are you sure you want to delete this trade and ALL students/attendance for it?")) return;
+
+  // Delete trade document
   await deleteDoc(doc(db, "trades", tradeCode));
+
+  // Delete all students under this trade
+  const studentsQuery = query(collection(db, "students"), where("tradeCode", "==", tradeCode));
+  const studentsSnapshot = await getDocs(studentsQuery);
+  for (const studentDoc of studentsSnapshot.docs) {
+    await deleteDoc(doc(db, "students", studentDoc.id));
+  }
+
+  // Delete all attendance for this trade
+  const attendanceQuery = query(collection(db, "attendance"));
+  const attendanceSnapshot = await getDocs(attendanceQuery);
+  for (const attDoc of attendanceSnapshot.docs) {
+    if (attDoc.id.startsWith(tradeCode + "_")) {
+      await deleteDoc(doc(db, "attendance", attDoc.id));
+    }
+  }
+
   window.closePopup();
   await window.loadTrades();
-  alert('Trade removed');
+  alert('Trade and linked students/attendance removed');
 };
 
 window.addTrade = async function() {
@@ -198,7 +217,7 @@ window.removeStudent = async function(studentId) {
   await window.showStudentsList();
 };
 
-// THIS IS THE MAIN FIXED FUNCTION, no locks, local IST time!
+// Main attendance submit, IST date, NO locks
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
