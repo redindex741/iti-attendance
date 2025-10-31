@@ -6,21 +6,21 @@
   <title>ITI Daily Attendance System</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase JS SDK as ES modules (exposes config) -->
+  <!-- Firebase JS SDK as ES modules -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
-  apiKey: "AIzaSyBaksPckRx6bJUXYohlEu0YTUYGYxsM1yI",
-  authDomain: "iti-attendance-system-22453.firebaseapp.com",
-  projectId: "iti-attendance-system-22453",
-  storageBucket: "iti-attendance-system-22453.firebasestorage.app",
-  messagingSenderId: "270483446181",
-  appId: "1:270483446181:web:a784b7919c2df6f1cbf04c"
-};
-    
+      apiKey: "AIzaSyBaksPckRx6bJUXYohlEu0YTUYGYxsM1yI",
+      authDomain: "iti-attendance-system-22453.firebaseapp.com",
+      projectId: "iti-attendance-system-22453",
+      storageBucket: "iti-attendance-system-22453.firebasestorage.app",
+      messagingSenderId: "270483446181",
+      appId: "1:270483446181:web:a784b7919c2df6f1cbf04c"
+    };
+
     const app = initializeApp(firebaseConfig);
     window.firebaseAuth = getAuth(app);
     window.firebaseDb = getFirestore(app);
@@ -54,6 +54,7 @@
         <button onclick="showAddTradeForm()">Add Trade</button>
         <button onclick="showAddStudentForm()">Add Student</button>
         <button onclick="toggleReports()">View Records</button>
+        <button onclick="showRemoveTradeForm()">Remove Trade</button>
       </div>
     </div>
 
@@ -91,7 +92,6 @@
       <button id="submitAttendance" onclick="submitAttendance()">Submit Daily Attendance</button>
     </div>
 
-    <!-- Records Section -->
     <div id="recordsSection" style="display:none;">
       <h2>Attendance Records</h2>
       <div class="form-group">
@@ -121,6 +121,21 @@
       </div>
       <div class="button-group">
         <button onclick="addTrade()">Add Trade</button>
+        <button onclick="closePopup()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Trade Popup -->
+  <div id="removeTradePopup" class="popup" style="display:none;">
+    <div class="popup-content">
+      <h2>Remove Trade</h2>
+      <div class="form-group">
+        <label for="removeTradeSelector">Select Trade:</label>
+        <select id="removeTradeSelector"></select>
+      </div>
+      <div class="button-group">
+        <button onclick="removeTrade()">Remove</button>
         <button onclick="closePopup()">Cancel</button>
       </div>
     </div>
@@ -175,4 +190,3 @@
   <script type="module" src="script.js"></script>
 </body>
 </html>
-
