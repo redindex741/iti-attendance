@@ -1,8 +1,5 @@
-console.log("Script.js loaded!");
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-import {
-  collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where
-} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
@@ -48,6 +45,7 @@ window.showAddStudentForm = function() {
 window.closePopup = function() {
   document.getElementById('addTradePopup').style.display = 'none';
   document.getElementById('addStudentPopup').style.display = 'none';
+  document.getElementById('removeTradePopup').style.display = 'none';
 };
 
 window.toggleReports = function() {
@@ -60,6 +58,31 @@ window.toggleReports = function() {
     recSec.style.display = 'none';
     attSec.style.display = 'block';
   }
+};
+
+window.showRemoveTradeForm = async function() {
+  document.getElementById('removeTradePopup').style.display = 'block';
+  const select = document.getElementById('removeTradeSelector');
+  select.innerHTML = '<option value="">Choose Trade</option>';
+  // Load trade list
+  const tradesSnapshot = await getDocs(collection(db, 'trades'));
+  tradesSnapshot.forEach(docSnap => {
+    const trade = docSnap.data();
+    const opt = document.createElement("option");
+    opt.value = docSnap.id;
+    opt.textContent = `${trade.name} (${trade.code})`;
+    select.appendChild(opt);
+  });
+};
+
+window.removeTrade = async function() {
+  const tradeCode = document.getElementById('removeTradeSelector').value;
+  if (!tradeCode) return alert('Please select a trade to remove.');
+  if (!confirm("Are you sure you want to delete this trade? This will NOT delete students or attendance under this trade.")) return;
+  await deleteDoc(doc(db, "trades", tradeCode));
+  window.closePopup();
+  await window.loadTrades();
+  alert('Trade removed');
 };
 
 window.addTrade = async function() {
@@ -173,7 +196,6 @@ function updateSummary(attendance) {
   document.getElementById("totalLeave").textContent = attendance.filter(x => x === "leave").length;
 }
 
-// Updated for multi-trade view (shows all students for "All Trades")
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
   const date = document.getElementById('recordsDateSelector').value;
@@ -182,10 +204,8 @@ window.showRecords = async function() {
 
   let studentsQuery;
   if (!tradeCode) {
-    // "All Trades" selected: fetch ALL students
     studentsQuery = collection(db, 'students');
   } else {
-    // Specific trade: filter
     studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   }
   const studentsSnapshot = await getDocs(studentsQuery);
@@ -234,8 +254,6 @@ window.showRecords = async function() {
     makeTable(leave, "Leave");
 };
 
-// ---------------------- END all window-attached functions ----------------------
-
 // Login event
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
@@ -265,5 +283,3 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
   }
 });
-
-
