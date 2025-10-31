@@ -6,9 +6,8 @@
   <title>ITI Daily Attendance System</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase JS SDK as ES modules (does NOT run scripts here on GitHub, just exposes config) -->
+  <!-- Firebase JS SDK as ES modules (exposes config) -->
   <script type="module">
-    // These imports only expose config and services
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -17,7 +16,7 @@
       apiKey: "AIzaSyAy1RcvyUkexEfFAWX8De3tF01F3X2092w",
       authDomain: "iti-attendance-system-6d54a.firebaseapp.com",
       projectId: "iti-attendance-system-6d54a",
-      storageBucket: "iti-attendance-system-6d54a.firebasestorage.app",
+      storageBucket: "iti-attendance-system-6d54a.appspot.com",
       messagingSenderId: "862789334597",
       appId: "1:862789334597:web:f9a135c682afb08662d52c"
     };
@@ -28,12 +27,12 @@
   </script>
 </head>
 <body>
-  <!-- Login Modal (auth required before seeing main app) -->
+  <!-- Login Modal -->
   <div id="loginContainer" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:9999;">
     <div style="background:#fff;padding:32px;border-radius:12px;max-width:360px;width:90%;">
       <h2 style="margin-bottom:18px;">Login</h2>
       <input id="email" type="email" autocomplete="username" placeholder="Email" style="width:100%;padding:10px;margin:10px 0;">
-<input id="password" type="password" autocomplete="current-password" placeholder="Password" style="width:100%;padding:10px;margin-bottom:10px;">
+      <input id="password" type="password" autocomplete="current-password" placeholder="Password" style="width:100%;padding:10px;margin-bottom:10px;">
       <button id="loginBtn" style="width:100%;padding:10px;">Login</button>
       <p id="loginError" style="color:red;display:none;margin-top:10px;"></p>
     </div>
@@ -92,7 +91,7 @@
       <button id="submitAttendance" onclick="submitAttendance()">Submit Daily Attendance</button>
     </div>
 
-    <!-- Records Section (separates Present, Absent, Leave) -->
+    <!-- Records Section -->
     <div id="recordsSection" style="display:none;">
       <h2>Attendance Records</h2>
       <div class="form-group">
@@ -159,4 +158,20 @@
         <select id="newStudentShift">
           <option value="Morning">Morning</option>
           <option value="Evening">Evening</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="newStudentUnit">Unit:</label>
+        <input type="text" id="newStudentUnit" placeholder="e.g., 1A, 2B">
+      </div>
+      <div class="button-group">
+        <button onclick="addStudent()">Add Student</button>
+        <button onclick="closePopup()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
+  <!-- Attach your main script.js here, right before body close -->
+  <script type="module" src="script.js"></script>
+</body>
+</html>
