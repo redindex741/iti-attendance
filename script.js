@@ -4,22 +4,33 @@ import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, 
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
 
-// UI elements (always outside functions)
+// UI elements
 const loginContainer = document.getElementById('loginContainer');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Utility
-function toIsoDate(dateStr) { if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const parts = dateStr.split('/'); if (parts.length === 3) {
-  const m = parts[0].padStart(2, '0'); const d = parts[1].padStart(2, '0'); const y = parts[2];
-  return `${y}-${m}-${d}`; } return dateStr; }
-function getToday() { const now = new Date(); const offsetMs = 5.5 * 60 * 60 * 1000;
-  const local = new Date(now.getTime() + offsetMs); return local.toISOString().slice(0, 10); }
+// Utility functions
+function toIsoDate(dateStr) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const m = parts[0].padStart(2, '0');
+    const d = parts[1].padStart(2, '0');
+    const y = parts[2];
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+function getToday() {
+  const now = new Date();
+  const offsetMs = 5.5 * 60 * 60 * 1000;
+  const local = new Date(now.getTime() + offsetMs);
+  return local.toISOString().slice(0, 10);
+}
 
-// Expose all required functions on window
+// Functional assignments so every <button onclick="..."> works
 window.showAddTradeForm = function() {
   document.getElementById('addTradePopup').style.display = 'flex';
 };
@@ -44,7 +55,8 @@ window.showRemoveTradeForm = async function() {
     const trade = docSnap.data();
     const opt = document.createElement("option");
     opt.value = docSnap.id; opt.textContent = `${trade.name} (${trade.code})`;
-    select.appendChild(opt); });
+    select.appendChild(opt);
+  });
 };
 window.removeTrade = async function() {
   const tradeCode = document.getElementById('removeTradeSelector').value;
@@ -53,9 +65,15 @@ window.removeTrade = async function() {
   await deleteDoc(doc(db, "trades", tradeCode));
   const studentsQuery = query(collection(db, "students"), where("tradeCode", "==", tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
-  for (const studentDoc of studentsSnapshot.docs) { await deleteDoc(doc(db, "students", studentDoc.id)); }
+  for (const studentDoc of studentsSnapshot.docs) {
+    await deleteDoc(doc(db, "students", studentDoc.id));
+  }
   const attendanceSnapshot = await getDocs(collection(db, "attendance"));
-  for (const attDoc of attendanceSnapshot.docs) { if (attDoc.id.startsWith(tradeCode + "_")) { await deleteDoc(doc(db, "attendance", attDoc.id)); } }
+  for (const attDoc of attendanceSnapshot.docs) {
+    if (attDoc.id.startsWith(tradeCode + "_")) {
+      await deleteDoc(doc(db, "attendance", attDoc.id));
+    }
+  }
   window.closePopup(); await window.loadTrades(); alert('Trade & related data removed.');
 };
 window.addTrade = async function() {
@@ -73,7 +91,8 @@ window.addStudent = async function() {
   const studentAdmission = document.getElementById("newStudentAdmission").value.trim();
   const studentShift = document.getElementById("newStudentShift").value;
   const studentUnit = document.getElementById("newStudentUnit").value.trim();
-  if (!tradeCode || !studentName || !studentMobile || !studentAdmission || !studentShift || !studentUnit || !studentYear) return alert('Please fill all required fields');
+  if (!tradeCode || !studentName || !studentMobile || !studentAdmission || !studentShift || !studentUnit || !studentYear)
+    return alert('Please fill all required fields');
   await setDoc(doc(collection(db, "students")), {
     tradeCode, name: studentName, year: studentYear, mobile: studentMobile, admission: studentAdmission, shift: studentShift, unit: studentUnit });
   window.closePopup(); await window.showStudentsList(); alert('Student added');
@@ -82,8 +101,10 @@ window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
   const studentTrade = document.getElementById('studentTrade');
   const recordsTradeSelector = document.getElementById('recordsTradeSelector');
-  [tradeSelector, studentTrade, recordsTradeSelector].forEach(sel => { if (!sel) return;
-    while (sel.options && sel.options.length > 1) sel.remove(1); });
+  [tradeSelector, studentTrade, recordsTradeSelector].forEach(sel => {
+    if (!sel) return;
+    while (sel.options && sel.options.length > 1) sel.remove(1);
+  });
   const tradesSnapshot = await getDocs(collection(db, 'trades'));
   tradesSnapshot.forEach(docSnap => {
     const trade = docSnap.data();
@@ -100,7 +121,6 @@ window.showStudentsList = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const studentsList = document.getElementById("studentsList");
   studentsList.innerHTML = "";
-
   let students = [];
   if (!tradeCode) {
     const studentsSnapshot = await getDocs(collection(db, 'students'));
@@ -119,11 +139,9 @@ window.showStudentsList = async function() {
     studentsList.innerHTML = "<li>Select a trade to view students.</li>";
     return;
   }
-
   const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
-
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${getToday()}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
   for (let i = 0; i < students.length; i++) {
@@ -195,6 +213,7 @@ window.showRecords = async function() {
   if (!tradeCode) {
     const studentsSnapshot = await getDocs(collection(db, 'students'));
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
+
     const attendanceSnapshot = await getDocs(collection(db, 'attendance'));
     const attendanceMap = {};
     attendanceSnapshot.forEach(docSnap => {
@@ -203,50 +222,73 @@ window.showRecords = async function() {
         attendanceMap[trade] = docSnap.data().data || [];
       }
     });
+
     students.forEach(student => {
       const attendanceForTrade = attendanceMap[student.tradeCode] || [];
       student.status = attendanceForTrade.length > 0 ? attendanceForTrade[students.indexOf(student)] || "" : "";
     });
+
   } else {
     const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
     const studentsSnapshot = await getDocs(studentsQuery);
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
+
     const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
     const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
+
     for (let i = 0; i < students.length; i++) {
       students[i].status = attendance[i] || "";
     }
   }
+
   let present = students.filter(s => s.status === "present");
   let absent = students.filter(s => s.status === "absent");
   let leave = students.filter(s => s.status === "leave");
+
   window.lastReportData = {present, absent, leave};
+
   function makeTable(list, statusLabel) {
     if (list.length === 0) return `<strong>${statusLabel}</strong><br><em>No students</em><br>`;
     let html = `<strong>${statusLabel}</strong><table border="1" cellspacing="0" cellpadding="4" style="margin-bottom:18px;">
       <tr style="background:#eee;">
-        <th>Trade</th> <th>Name</th> <th>Mobile</th> <th>Admission Date</th> <th>Shift</th> <th>Unit</th> <th>Status</th>
+        <th>Trade</th>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Admission Date</th>
+        <th>Shift</th>
+        <th>Unit</th>
+        <th>Status</th>
       </tr>`;
     list.forEach(stu => {
       html += `<tr>
-        <td>${stu.tradeCode}</td> <td>${stu.name}</td> <td>${stu.mobile}</td> <td>${stu.admission}</td>
-        <td>${stu.shift}</td> <td>${stu.unit}</td> <td>${statusLabel}</td>
+        <td>${stu.tradeCode}</td>
+        <td>${stu.name}</td>
+        <td>${stu.mobile}</td>
+        <td>${stu.admission}</td>
+        <td>${stu.shift}</td>
+        <td>${stu.unit}</td>
+        <td>${statusLabel}</td>
       </tr>`;
     });
     html += `</table>`;
     return html;
   }
+
   document.getElementById('recordsTable').innerHTML =
     makeTable(present, "Present") +
     makeTable(absent, "Absent") +
     makeTable(leave, "Leave");
 };
+
 window.downloadPdf = function(status) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const data = window.lastReportData || {present:[], absent:[], leave:[]};
   const listData = data[status] || [];
-  if (listData.length === 0) { alert(`No ${status} records to export`); return; }
+  if (listData.length === 0) {
+    alert(`No ${status} records to export`);
+    return;
+  }
   const columns = [
     { header: 'Trade', dataKey: 'tradeCode' },
     { header: 'Name', dataKey: 'name' },
@@ -266,14 +308,21 @@ window.downloadPdf = function(status) {
   doc.save(`${status}_attendance_report.pdf`);
 };
 
-// AUTH
+// Auth
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
-  try { await signInWithEmailAndPassword(auth, email, password); loginError.style.display = 'none'; }
-  catch (err) { loginError.style.display = 'block'; loginError.textContent = err.message; }
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    loginError.style.display = 'none';
+  } catch (err) {
+    loginError.style.display = 'block';
+    loginError.textContent = err.message;
+  }
 };
+
 logoutBtn.onclick = () => { signOut(auth); };
+
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     loginContainer.style.display = 'none';
@@ -289,4 +338,4 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = 'none';
     document.querySelector('.navbar').style.display = 'none';
   }
-};
+});
