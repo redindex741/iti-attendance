@@ -11,7 +11,7 @@ const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Utility functions
+// Utility
 function toIsoDate(dateStr) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const parts = dateStr.split('/');
@@ -30,7 +30,7 @@ function getToday() {
   return local.toISOString().slice(0, 10);
 }
 
-// Functional assignments so every <button onclick="..."> works
+// Global UI/window functions for buttons
 window.showAddTradeForm = function() {
   document.getElementById('addTradePopup').style.display = 'flex';
 };
@@ -117,28 +117,50 @@ function addOption(select, value, text) {
   if (!select) return;
   const opt = document.createElement("option"); opt.value = value; opt.textContent = text; select.appendChild(opt);
 }
+
+// MAIN: All Trades or One Trade (principal summary & normal)
 window.showStudentsList = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const studentsList = document.getElementById("studentsList");
   studentsList.innerHTML = "";
   let students = [];
   if (!tradeCode) {
+    // All Trades summary
     const studentsSnapshot = await getDocs(collection(db, 'students'));
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
     const attendanceSnapshot = await getDocs(collection(db, "attendance"));
     const today = getToday();
-    const attendanceMap = {};
-    attendanceSnapshot.forEach(docSnap => { if (docSnap.id.endsWith("_" + today)) {
-      const trade = docSnap.id.split("_")[0]; attendanceMap[trade] = docSnap.data().data || [];
-    } });
-    students.forEach(student => {
-      const arr = attendanceMap[student.tradeCode] || [];
-      student.status = arr.length ? arr[students.indexOf(student)] || "" : "";
+    attendanceSnapshot.forEach(docSnap => {
+      if (docSnap.id.endsWith("_" + today)) {
+        const arr = docSnap.data().data || [];
+        const trade = docSnap.id.split("_")[0];
+        const studentsOfTrade = students.filter(s => s.tradeCode === trade);
+        studentsOfTrade.forEach((stu, idx) => {
+          stu.status = arr[idx] || "";
+        });
+      }
     });
+    if (students.length === 0) {
+      studentsList.innerHTML = "<li>No students found.</li>";
+    } else {
+      students.forEach(student => {
+        const li = document.createElement("li");
+        li.className = "student-item" + (student.status ? " " + student.status : "");
+        li.innerHTML = `
+          <div class="student-info">
+            <div class="student-name">${student.name} <span style="font-weight:normal;font-size:13px;">(${student.tradeCode})</span></div>
+            <div class="student-details">
+              Year: ${student.year}, Mobile: ${student.mobile}, Admission: ${student.admission}, Shift: ${student.shift}, Unit: ${student.unit}
+            </div>
+          </div>
+        `;
+        studentsList.appendChild(li);
+      });
+    }
     updateSummary(students.map(s => s.status));
-    studentsList.innerHTML = "<li>Select a trade to view students.</li>";
     return;
   }
+  // Single trade
   const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
@@ -167,6 +189,7 @@ window.showStudentsList = async function() {
   }
   updateSummary(attendance);
 };
+
 window.markAttendance = async function(tradeCode, idx, status) {
   const today = getToday();
   const attendanceRef = doc(db, "attendance", `${tradeCode}_${today}`);
@@ -308,7 +331,7 @@ window.downloadPdf = function(status) {
   doc.save(`${status}_attendance_report.pdf`);
 };
 
-// Auth
+// Auth event handlers
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
