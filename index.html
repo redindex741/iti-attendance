@@ -4,31 +4,126 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ITI Attendance System</title>
-<!-- Load jsPDF libraries for PDF export -->
+
+<!-- Firebase SDK Initialization -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDaN_xsPxCkqtLsQwUjNBztEEU9RQ4B9mA",
+    authDomain: "iti-a-75307.firebaseapp.com",
+    projectId: "iti-a-75307",
+    storageBucket: "iti-a-75307.appspot.com",
+    messagingSenderId: "415777152029",
+    appId: "1:415777152029:web:2e3f880a27be750d627af4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.firebaseAuth = getAuth(app);
+  window.firebaseDb = getFirestore(app);
+</script>
+
+<!-- jsPDF Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; }
-  #loginContainer, .container, #popup, #recordExportButtons { display: none; }
-  .navbar { display: flex; justify-content: space-between; align-items: center; background: #0066cc; color: #fff; padding: 10px; }
-  button { padding: 8px 12px; margin: 5px; border:none; border-radius:4px; cursor:pointer; }
-  button:hover { opacity: 0.9; }
-  #popup { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; justify-content:center; align-items:center; z-index:1000; }
-  .popup-content { background: #fff; padding:20px; border-radius:8px; width:350px; }
-  table { border-collapse: collapse; width:100%; margin-top:10px; }
-  th, td { border: 1px solid #ccc; padding:8px; text-align: left; }
-  .summary-box { display:flex; justify-content: space-around; margin-top:10px; }
-  .summary-box div { background:#f2f2f2; padding:10px; border-radius:6px; min-width:80px; text-align:center; }
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  #loginContainer,
+  .container,
+  #addTradePopup,
+  #addStudentPopup,
+  #removeTradePopup,
+  #recordsSection {
+    display: none;
+  }
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0066cc;
+    color: white;
+    padding: 10px;
+  }
+  button {
+    padding: 8px 12px;
+    margin: 5px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover {
+    opacity: 0.9;
+  }
+  .popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    display: none;
+  }
+  .popup-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 350px;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  .student-item {
+    margin-bottom: 8px;
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  .attendance-btn {
+    margin-right: 5px;
+    padding: 4px 8px;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-present {
+    background-color: #4caf50;
+    color: white;
+  }
+  .btn-absent {
+    background-color: #f44336;
+    color: white;
+  }
+  .btn-leave {
+    background-color: #ffeb3b;
+  }
+  #submitAttendance {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: #0366d6;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+  }
 </style>
 </head>
 <body>
 
-<div id="loginContainer" style="display:flex; flex-direction:column; width:300px; margin:50px auto;">
-<h2>Login</h2>
-<input id="email" placeholder="Email" style="margin-bottom:8px; padding:8px;" />
-<input id="password" type="password" placeholder="Password" style="margin-bottom:8px; padding:8px;" />
-<button id="loginBtn">Login</button>
-<div id="loginError" style="color:red; display:none;">Invalid credentials</div>
+<div id="loginContainer" style="display: flex; flex-direction: column; width: 300px; margin: 50px auto;">
+  <h2>Login</h2>
+  <input id="email" placeholder="Email" style="margin-bottom: 8px; padding: 8px;" />
+  <input id="password" type="password" placeholder="Password" style="margin-bottom: 8px; padding: 8px;" />
+  <button id="loginBtn">Login</button>
+  <div id="loginError" style="color: red; display: none;">Invalid credentials</div>
 </div>
 
 <div class="navbar" style="display:none;">
@@ -41,34 +136,41 @@
 
 <div class="container" style="display:none;">
   <h3>Controls</h3>
-  <button onclick="showAddTrade()">Add Trade</button>
-  <button onclick="showAddStudent()">Add Student</button>
-  <button onclick="toggleReportView()">View Reports</button>
-  <button onclick="showRemoveTrade()">Remove Trade</button>
-  
-  <div style="margin-top:20px;">
-    <label for="tradeSelect">Select Trade:</label>
-    <select id="tradeSelect" onchange="loadStudents()"><option value="">-- All Trades --</option></select>
+  <button onclick="showAddTradeForm()">Add Trade</button>
+  <button onclick="showAddStudentForm()">Add Student</button>
+  <button onclick="toggleReports()">Toggle View Reports</button>
+  <button onclick="showRemoveTradeForm()">Remove Trade</button>
+
+  <div style="margin-top: 20px;">
+    <label for="tradeSelector">Select Trade:</label>
+    <select id="tradeSelector" onchange="showStudentsList()">
+      <option value="">-- Select trade --</option>
+    </select>
   </div>
-  <ul id="studentsList" style="margin-top:10px; list-style:none; padding:0;"></ul>
-  
-  <div class="summary-box" style="margin-top:20px;">
+
+  <ul id="studentsList" style="margin-top: 10px; list-style: none; padding: 0;"></ul>
+
+  <div class="summary-box" style="margin-top: 20px;">
     <div>Total Students: <span id="totalStudents">0</span></div>
     <div>Present: <span id="totalPresent">0</span></div>
     <div>Absent: <span id="totalAbsent">0</span></div>
     <div>On Leave: <span id="totalLeave">0</span></div>
   </div>
-  <button style="margin-top:15px;" onclick="submitAttendance()">Submit Attendance</button>
-  
-  <div id="recordsSection" style="margin-top:30px; display:none;">
+
+  <button id="submitAttendance" onclick="submitAttendance()">Submit Daily Attendance</button>
+
+  <div id="recordsSection" style="margin-top: 30px; display: none;">
     <h4>View Records</h4>
-    <label for="recordTrade">Trade:</label>
-    <select id="recordTrade"><option value="">All Trades</option></select>
-    <label for="recordDate" style="margin-left:10px;">Date:</label>
-    <input type="date" id="recordDate"/>
-    <button onclick="viewRecords()">Show Records</button>
-    <div id="recordResults" style="margin-top:15px;"></div>
-    <div id="recordExportButtons" style="margin-top:10px; display:none;">
+    <label for="recordsTradeSelector">Trade:</label>
+    <select id="recordsTradeSelector">
+      <option value="">All Trades</option>
+    </select>
+    <label for="recordsDateSelector">Date:</label>
+    <input type="date" id="recordsDateSelector" />
+    <button onclick="showRecords()">Show Records</button>
+
+    <div id="recordsTable" style="margin-top: 15px;"></div>
+    <div style="margin-top: 15px;">
       <button onclick="downloadPdf('present')">Download Present PDF</button>
       <button onclick="downloadPdf('absent')">Download Absent PDF</button>
       <button onclick="downloadPdf('leave')">Download Leave PDF</button>
@@ -76,51 +178,50 @@
   </div>
 </div>
 
-<!-- Popup for Add Trade -->
-<div id="addTradePopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:999;">
-  <div style="background:#fff; padding:20px; border-radius:8px; width:300px;">
-    <h4>Add Trade</h4>
-    <input id="newTradeName" placeholder="Trade Name" style="width:100%; margin-bottom:10px; padding:8px;" />
-    <input id="newTradeCode" placeholder="Trade Code" style="width:100%; margin-bottom:10px; padding:8px;" />
-    <button onclick="addTrade()">Add</button>
+<!-- Add Trade Popup -->
+<div id="addTradePopup" class="popup">
+  <div class="popup-content">
+    <h3>Add Trade</h3>
+    <input type="text" id="newTradeName" placeholder="Trade Name" /><br /><br />
+    <input type="text" id="newTradeCode" placeholder="Trade Code (e.g., COP, ELE)" /><br /><br />
+    <button onclick="addTrade()">Add Trade</button>
     <button onclick="closePopup()">Cancel</button>
   </div>
 </div>
 
-<!-- Popup for Add Student -->
-<div id="addStudentPopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:999;">
-  <div style="background:#fff; padding:20px; border-radius:8px; width:350px; max-height:90%; overflow:auto;">
-    <h4>Add Student</h4>
-    <label for="studentTrade">Trade:</label>
-    <select id="studentTrade" style="width:100%; margin-bottom:10px;"></select><br />
-    <input id="newStudentName" placeholder="Full Name" style="width:100%; margin-bottom:10px; padding:8px;" />
+<!-- Add Student Popup -->
+<div id="addStudentPopup" class="popup">
+  <div class="popup-content">
+    <h3>Add Student</h3>
+    <label for="studentTrade">Trade:</label><br />
+    <select id="studentTrade"><option value="">--Select Trade--</option></select><br /><br />
+    <input type="text" id="newStudentName" placeholder="Full Name" /><br /><br />
     <label for="newStudentYear">Year:</label>
-    <select id="newStudentYear" style="width:100%; margin-bottom:10px;">
+    <select id="newStudentYear">
       <option value="1">1</option>
       <option value="2">2</option>
-    </select>
-    <input id="newStudentMobile" placeholder="Mobile" style="width:100%; margin-bottom:10px; padding:8px;" />
+    </select><br /><br />
+    <input type="text" id="newStudentMobile" placeholder="Mobile Number" /><br /><br />
     <label for="newStudentAdmission">Admission Date:</label>
-    <input type="date" id="newStudentAdmission" style="width:100%; margin-bottom:10px; padding:8px;"/>
-    <label for="newStudentShift">Shift Number:</label>
-    <input type="number" id="newStudentShift" placeholder="Shift Number" style="width:100%; margin-bottom:10px; padding:8px;"/>
-    <input id="newStudentUnit" placeholder="Unit (e.g., 1A)" style="width:100%; margin-bottom:10px; padding:8px;" />
+    <input type="date" id="newStudentAdmission" /><br /><br />
+    <input type="number" id="newStudentShift" placeholder="Shift Number (e.g., 1, 2)" /><br /><br />
+    <input type="text" id="newStudentUnit" placeholder="Unit (e.g., 1A, 2B)" /><br /><br />
     <button onclick="addStudent()">Add</button>
     <button onclick="closePopup()">Cancel</button>
   </div>
 </div>
 
-<!-- Popup for Remove Trade -->
-<div id="removeTradePopup" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:999;">
-  <div style="background:#fff; padding:20px; border-radius:8px; width:300px;">
-    <h4>Remove Trade</h4>
-    <select id="removeTradeSelect" style="width:100%; margin-bottom:10px;"></select>
+<!-- Remove Trade Popup -->
+<div id="removeTradePopup" class="popup">
+  <div class="popup-content">
+    <h3>Remove Trade</h3>
+    <select id="removeTradeSelector"></select><br /><br />
     <button onclick="removeTrade()">Remove</button>
     <button onclick="closePopup()">Cancel</button>
   </div>
 </div>
 
-<script src="script.js"></script>
-<script>
-  // Initialization: add event listen, real code in script.js
-</script>
+<script type="module" src="script.js"></script>
+
+</body>
+</html>
