@@ -12,7 +12,7 @@ const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
 function toIsoDate(dateStr) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^d{4}-d{2}-d{2}$/.test(dateStr)) return dateStr;
   const parts = dateStr.split('/');
   if (parts.length === 3) {
     const m = parts[0].padStart(2, '0');
@@ -23,10 +23,10 @@ function toIsoDate(dateStr) {
   return dateStr;
 }
 
-// Always use IST for attendance
+// IST date calculation
 function getToday() {
   const now = new Date();
-  const offsetMs = 5.5 * 60 * 60 * 1000; // 5 hours 30 min in ms
+  const offsetMs = 5.5 * 60 * 60 * 1000;
   const local = new Date(now.getTime() + offsetMs);
   return local.toISOString().slice(0, 10);
 }
@@ -95,25 +95,23 @@ window.showRemoveTradeForm = async function() {
   });
 };
 
-// FULLY UPDATED TO DELETE STUDENTS AND ATTENDANCE WHEN TRADE IS REMOVED
 window.removeTrade = async function() {
   const tradeCode = document.getElementById('removeTradeSelector').value;
   if (!tradeCode) return alert('Please select a trade to remove.');
   if (!confirm("Are you sure you want to delete this trade and ALL students/attendance for it?")) return;
 
-  // Delete trade document
+  // Delete trade
   await deleteDoc(doc(db, "trades", tradeCode));
 
-  // Delete all students under this trade
+  // Delete all students of the trade
   const studentsQuery = query(collection(db, "students"), where("tradeCode", "==", tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   for (const studentDoc of studentsSnapshot.docs) {
     await deleteDoc(doc(db, "students", studentDoc.id));
   }
 
-  // Delete all attendance for this trade
-  const attendanceQuery = query(collection(db, "attendance"));
-  const attendanceSnapshot = await getDocs(attendanceQuery);
+  // Delete all attendance documents of the trade for any date
+  const attendanceSnapshot = await getDocs(collection(db, "attendance"));
   for (const attDoc of attendanceSnapshot.docs) {
     if (attDoc.id.startsWith(tradeCode + "_")) {
       await deleteDoc(doc(db, "attendance", attDoc.id));
@@ -122,7 +120,7 @@ window.removeTrade = async function() {
 
   window.closePopup();
   await window.loadTrades();
-  alert('Trade and linked students/attendance removed');
+  alert('Trade and related students and attendance removed.');
 };
 
 window.addTrade = async function() {
@@ -172,7 +170,7 @@ window.showStudentsList = async function() {
   const studentsSnapshot = await getDocs(studentsQuery);
   const students = [];
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
-  
+
   const today = getToday();
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${today}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
@@ -217,7 +215,6 @@ window.removeStudent = async function(studentId) {
   await window.showStudentsList();
 };
 
-// Main attendance submit, IST date, NO locks
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
@@ -250,27 +247,45 @@ window.showRecords = async function() {
   const rawDate = document.getElementById('recordsDateSelector').value;
   const date = toIsoDate(rawDate);
 
-  const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
-  const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-
-  let studentsQuery;
+  let students = [];
   if (!tradeCode) {
-    studentsQuery = collection(db, 'students');
-  } else {
-    studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
-  }
-  const studentsSnapshot = await getDocs(studentsQuery);
-  const students = [];
-  studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
+    // All trades selected
+    const studentsSnapshot = await getDocs(collection(db, 'students'));
+    studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
 
-  let present = [], absent = [], leave = [];
-  for (let i = 0; i < students.length; i++) {
-    const status = attendance[i];
-    const student = students[i];
-    if (status === "present") present.push({ ...student, status });
-    else if (status === "absent") absent.push({ ...student, status });
-    else if (status === "leave") leave.push({ ...student, status });
+    // map tradeCode -> attendance array
+    const attendanceSnapshot = await getDocs(collection(db, 'attendance'));
+    const attendanceMap = {};
+    attendanceSnapshot.forEach(docSnap => {
+      if (docSnap.id.endsWith('_' + date)) {
+        const trade = docSnap.id.split('_')[0];
+        attendanceMap[trade] = docSnap.data().data || [];
+      }
+    });
+
+    // map attendance status to students
+    students.forEach(student => {
+      const attendanceForTrade = attendanceMap[student.tradeCode] || [];
+      student.status = attendanceForTrade.length > 0 ? attendanceForTrade[students.indexOf(student)] || "" : "";
+    });
+
+  } else {
+    // Single trade selected
+    const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
+    const studentsSnapshot = await getDocs(studentsQuery);
+    studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
+
+    const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
+    const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
+
+    for (let i = 0; i < students.length; i++) {
+      students[i].status = attendance[i] || "";
+    }
   }
+
+  let present = students.filter(s => s.status === "present");
+  let absent = students.filter(s => s.status === "absent");
+  let leave = students.filter(s => s.status === "leave");
 
   function makeTable(list, statusLabel) {
     if (list.length === 0) return `<strong>${statusLabel}</strong><br><em>No students</em><br>`;
