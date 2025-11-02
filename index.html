@@ -21,14 +21,102 @@
     window.firebaseAuth = getAuth(app);
     window.firebaseDb = getFirestore(app);
   </script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <!-- Same HTML body as in the all-in-one answer above: login, navbar, .container, popups -->
-  <!-- Use the HTML structure from the big combined block, just without <style> and <script> blocks. -->
-  <!-- At the end: -->
+  <div id="loginContainer" style="display: flex; flex-direction: column; width: 300px; margin: 50px auto;">
+    <h2>Login</h2>
+    <input id="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <div id="loginError" class="error-message" style="display: none;">Invalid credentials</div>
+  </div>
+  <div class="navbar" style="display:none;">
+    <div>ITI Attendance System</div>
+    <div>
+      Date: <span id="currentDate"></span>
+      <button id="logoutBtn">Logout</button>
+    </div>
+  </div>
+  <div class="container" style="display:none;">
+    <div class="control-panel">
+      <h2>Controls</h2>
+      <div class="button-group">
+        <button onclick="showAddTradeForm()">Add Trade</button>
+        <button onclick="showAddStudentForm()">Add Student</button>
+        <button onclick="toggleReports()">View Records</button>
+        <button onclick="showRemoveTradeForm()">Remove Trade</button>
+      </div>
+    </div>
+    <div id="attendanceSection">
+      <div class="form-group">
+        <label for="tradeSelector">Select Trade:</label>
+        <select id="tradeSelector" onchange="showStudentsList()"><option value="">-- Select Trade --</option></select>
+      </div>
+      <ul id="studentsList"></ul>
+      <div id="summarySection">
+        <h3>Daily Summary</h3>
+        <div class="summary-grid">
+          <div class="summary-card"><span class="summary-label">Total Students</span><span class="summary-value" id="totalStudents">0</span></div>
+          <div class="summary-card"><span class="summary-label">Present</span><span class="summary-value" id="totalPresent">0</span></div>
+          <div class="summary-card"><span class="summary-label">Absent</span><span class="summary-value" id="totalAbsent">0</span></div>
+          <div class="summary-card"><span class="summary-label">On Leave</span><span class="summary-value" id="totalLeave">0</span></div>
+        </div>
+      </div>
+      <button id="submitAttendance" onclick="submitAttendance()">Submit Daily Attendance</button>
+    </div>
+    <div id="recordsSection" style="margin-top:30px; display:none;">
+      <h4>View Records</h4>
+      <label for="recordsTradeSelector">Trade:</label>
+      <select id="recordsTradeSelector"><option value="">All Trades</option></select>
+      <label for="recordsDateSelector">Date:</label>
+      <input type="date" id="recordsDateSelector" />
+      <button onclick="showRecords()">Show Records</button>
+      <div id="recordsTable" style="margin-top: 15px;"></div>
+      <div style="margin-top: 15px;">
+        <button onclick="downloadPdf('present')">Download Present PDF</button>
+        <button onclick="downloadPdf('absent')">Download Absent PDF</button>
+        <button onclick="downloadPdf('leave')">Download Leave PDF</button>
+      </div>
+    </div>
+  </div>
+  <!-- Popups -->
+  <div id="addTradePopup" class="popup">
+    <div class="popup-content">
+      <h2>Add Trade</h2>
+      <input type="text" id="newTradeName" placeholder="Trade Name" /><br /><br />
+      <input type="text" id="newTradeCode" placeholder="Trade Code (e.g., COP, ELE)" /><br /><br />
+      <button onclick="addTrade()">Add Trade</button>
+      <button onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+  <div id="addStudentPopup" class="popup">
+    <div class="popup-content">
+      <h2>Add Student</h2>
+      <label for="studentTrade">Trade:</label><br />
+      <select id="studentTrade"><option value="">--Select Trade--</option></select><br /><br />
+      <input type="text" id="newStudentName" placeholder="Full Name" /><br /><br />
+      <label for="newStudentYear">Year:</label>
+      <select id="newStudentYear"><option value="1">1</option><option value="2">2</option></select><br /><br />
+      <input type="text" id="newStudentMobile" placeholder="Mobile Number" /><br /><br />
+      <label for="newStudentAdmission">Admission Date:</label>
+      <input type="date" id="newStudentAdmission" /><br /><br />
+      <input type="number" id="newStudentShift" placeholder="Shift Number (e.g., 1,2)" /><br /><br />
+      <input type="text" id="newStudentUnit" placeholder="Unit (e.g., 1A, 2B)" /><br /><br />
+      <button onclick="addStudent()">Add</button>
+      <button onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+  <div id="removeTradePopup" class="popup">
+    <div class="popup-content">
+      <h2>Remove Trade</h2>
+      <select id="removeTradeSelector"></select><br /><br />
+      <button onclick="removeTrade()">Remove</button>
+      <button onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
   <script type="module" src="script.js"></script>
 </body>
 </html>
