@@ -52,8 +52,10 @@
     </div>
     <div id="attendanceSection">
       <div class="form-group">
-        <label for="tradeSelector">Select Trade:</label>
-        <select id="tradeSelector" onchange="showStudentsList()"><option value="">-- Select Trade --</option></select>
+        <label for="tradeSelector"><b>Show Students:</b></label>
+        <select id="tradeSelector" onchange="showStudentsList()">
+          <option value="">All Trades</option>
+        </select>
       </div>
       <ul id="studentsList"></ul>
       <div id="summarySection">
