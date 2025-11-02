@@ -4,38 +4,27 @@ import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, 
 const auth = window.firebaseAuth;
 const db = window.firebaseDb;
 
+// UI elements (always outside functions)
 const loginContainer = document.getElementById('loginContainer');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 const appContainer = document.querySelector('.container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-function toIsoDate(dateStr) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const m = parts[0].padStart(2, '0');
-    const d = parts[1].padStart(2, '0');
-    const y = parts[2];
-    return `${y}-${m}-${d}`;
-  }
-  return dateStr;
-}
+// Utility
+function toIsoDate(dateStr) { if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('/'); if (parts.length === 3) {
+  const m = parts[0].padStart(2, '0'); const d = parts[1].padStart(2, '0'); const y = parts[2];
+  return `${y}-${m}-${d}`; } return dateStr; }
+function getToday() { const now = new Date(); const offsetMs = 5.5 * 60 * 60 * 1000;
+  const local = new Date(now.getTime() + offsetMs); return local.toISOString().slice(0, 10); }
 
-function getToday() {
-  const now = new Date();
-  const offsetMs = 5.5 * 60 * 60 * 1000;
-  const local = new Date(now.getTime() + offsetMs);
-  return local.toISOString().slice(0, 10);
-}
-
-// ALL FUNCTIONS MUST BE "window.functionName = function" TO WORK WITH HTML ONCLICK:
-
+// Expose all required functions on window
 window.showAddTradeForm = function() {
-  document.getElementById('addTradePopup').style.display = 'block';
+  document.getElementById('addTradePopup').style.display = 'flex';
 };
 window.showAddStudentForm = function() {
-  document.getElementById('addStudentPopup').style.display = 'block';
+  document.getElementById('addStudentPopup').style.display = 'flex';
 };
 window.closePopup = function() {
   document.getElementById('addTradePopup').style.display = 'none';
@@ -46,88 +35,55 @@ window.toggleReports = function() {
   const recSec = document.getElementById('recordsSection');
   recSec.style.display = recSec.style.display === 'block' ? 'none' : 'block';
 };
-
 window.showRemoveTradeForm = async function() {
-  document.getElementById('removeTradePopup').style.display = 'block';
+  document.getElementById('removeTradePopup').style.display = 'flex';
   const select = document.getElementById('removeTradeSelector');
   select.innerHTML = '<option value="">Choose Trade</option>';
   const tradesSnapshot = await getDocs(collection(db, 'trades'));
   tradesSnapshot.forEach(docSnap => {
     const trade = docSnap.data();
     const opt = document.createElement("option");
-    opt.value = docSnap.id;
-    opt.textContent = `${trade.name} (${trade.code})`;
-    select.appendChild(opt);
-  });
+    opt.value = docSnap.id; opt.textContent = `${trade.name} (${trade.code})`;
+    select.appendChild(opt); });
 };
-
 window.removeTrade = async function() {
   const tradeCode = document.getElementById('removeTradeSelector').value;
   if (!tradeCode) return alert('Please select a trade to remove.');
   if (!confirm("Are you sure you want to delete this trade and ALL students/attendance for it?")) return;
-
   await deleteDoc(doc(db, "trades", tradeCode));
   const studentsQuery = query(collection(db, "students"), where("tradeCode", "==", tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
-  for (const studentDoc of studentsSnapshot.docs) {
-    await deleteDoc(doc(db, "students", studentDoc.id));
-  }
+  for (const studentDoc of studentsSnapshot.docs) { await deleteDoc(doc(db, "students", studentDoc.id)); }
   const attendanceSnapshot = await getDocs(collection(db, "attendance"));
-  for (const attDoc of attendanceSnapshot.docs) {
-    if (attDoc.id.startsWith(tradeCode + "_")) {
-      await deleteDoc(doc(db, "attendance", attDoc.id));
-    }
-  }
-  window.closePopup();
-  await window.loadTrades();
-  alert('Trade and related students and attendance removed.');
+  for (const attDoc of attendanceSnapshot.docs) { if (attDoc.id.startsWith(tradeCode + "_")) { await deleteDoc(doc(db, "attendance", attDoc.id)); } }
+  window.closePopup(); await window.loadTrades(); alert('Trade & related data removed.');
 };
-
 window.addTrade = async function() {
   const tradeName = document.getElementById("newTradeName").value.trim();
   const tradeCode = document.getElementById("newTradeCode").value.trim().toUpperCase();
   if (!tradeName || !tradeCode) return alert('Please fill all fields');
-  await setDoc(doc(collection(db, "trades"), tradeCode), {
-    name: tradeName,
-    code: tradeCode
-  });
-  window.closePopup();
-  await window.loadTrades();
-  alert('Trade added');
+  await setDoc(doc(collection(db, "trades"), tradeCode), { name: tradeName, code: tradeCode });
+  window.closePopup(); await window.loadTrades(); alert('Trade added');
 };
-
 window.addStudent = async function() {
   const tradeCode = document.getElementById("studentTrade").value;
   const studentName = document.getElementById("newStudentName").value.trim();
   const studentYear = document.getElementById("newStudentYear").value;
   const studentMobile = document.getElementById("newStudentMobile").value.trim();
   const studentAdmission = document.getElementById("newStudentAdmission").value.trim();
-  const studentShift = document.getElementById("newStudentShift").value; // Use number
+  const studentShift = document.getElementById("newStudentShift").value;
   const studentUnit = document.getElementById("newStudentUnit").value.trim();
-  if (!tradeCode || !studentName || !studentMobile || !studentAdmission || !studentShift || !studentUnit || !studentYear)
-    return alert('Please fill all required fields');
+  if (!tradeCode || !studentName || !studentMobile || !studentAdmission || !studentShift || !studentUnit || !studentYear) return alert('Please fill all required fields');
   await setDoc(doc(collection(db, "students")), {
-    tradeCode,
-    name: studentName,
-    year: studentYear,
-    mobile: studentMobile,
-    admission: studentAdmission,
-    shift: studentShift,
-    unit: studentUnit
-  });
-  window.closePopup();
-  await window.showStudentsList();
-  alert('Student added');
+    tradeCode, name: studentName, year: studentYear, mobile: studentMobile, admission: studentAdmission, shift: studentShift, unit: studentUnit });
+  window.closePopup(); await window.showStudentsList(); alert('Student added');
 };
-
 window.loadTrades = async function() {
   const tradeSelector = document.getElementById('tradeSelector');
   const studentTrade = document.getElementById('studentTrade');
   const recordsTradeSelector = document.getElementById('recordsTradeSelector');
-  [tradeSelector, studentTrade, recordsTradeSelector].forEach(sel => {
-    if (!sel) return;
-    while (sel.options && sel.options.length > 1) sel.remove(1);
-  });
+  [tradeSelector, studentTrade, recordsTradeSelector].forEach(sel => { if (!sel) return;
+    while (sel.options && sel.options.length > 1) sel.remove(1); });
   const tradesSnapshot = await getDocs(collection(db, 'trades'));
   tradesSnapshot.forEach(docSnap => {
     const trade = docSnap.data();
@@ -136,14 +92,10 @@ window.loadTrades = async function() {
     addOption(recordsTradeSelector, trade.code, `${trade.name} (${trade.code})`);
   });
 };
-
 function addOption(select, value, text) {
   if (!select) return;
-  const opt = document.createElement("option");
-  opt.value = value; opt.textContent = text;
-  select.appendChild(opt);
+  const opt = document.createElement("option"); opt.value = value; opt.textContent = text; select.appendChild(opt);
 }
-
 window.showStudentsList = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const studentsList = document.getElementById("studentsList");
@@ -151,18 +103,14 @@ window.showStudentsList = async function() {
 
   let students = [];
   if (!tradeCode) {
-    // All trades: summary only
     const studentsSnapshot = await getDocs(collection(db, 'students'));
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
     const attendanceSnapshot = await getDocs(collection(db, "attendance"));
     const today = getToday();
     const attendanceMap = {};
-    attendanceSnapshot.forEach(docSnap => {
-      if (docSnap.id.endsWith("_" + today)) {
-        const trade = docSnap.id.split("_")[0];
-        attendanceMap[trade] = docSnap.data().data || [];
-      }
-    });
+    attendanceSnapshot.forEach(docSnap => { if (docSnap.id.endsWith("_" + today)) {
+      const trade = docSnap.id.split("_")[0]; attendanceMap[trade] = docSnap.data().data || [];
+    } });
     students.forEach(student => {
       const arr = attendanceMap[student.tradeCode] || [];
       student.status = arr.length ? arr[students.indexOf(student)] || "" : "";
@@ -171,14 +119,13 @@ window.showStudentsList = async function() {
     studentsList.innerHTML = "<li>Select a trade to view students.</li>";
     return;
   }
-  // Show students for given trade
+
   const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
   const studentsSnapshot = await getDocs(studentsQuery);
   studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
 
   const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${getToday()}`));
   const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     const item = document.createElement("li");
@@ -202,7 +149,6 @@ window.showStudentsList = async function() {
   }
   updateSummary(attendance);
 };
-
 window.markAttendance = async function(tradeCode, idx, status) {
   const today = getToday();
   const attendanceRef = doc(db, "attendance", `${tradeCode}_${today}`);
@@ -212,13 +158,11 @@ window.markAttendance = async function(tradeCode, idx, status) {
   await setDoc(attendanceRef, { data: attendance });
   await window.showStudentsList();
 };
-
 window.removeStudent = async function(studentId) {
   if (!confirm("Are you sure you want to delete this student?")) return;
   await deleteDoc(doc(db, "students", studentId));
   await window.showStudentsList();
 };
-
 window.submitAttendance = async function() {
   const tradeCode = document.getElementById("tradeSelector").value;
   const today = getToday();
@@ -232,19 +176,16 @@ window.submitAttendance = async function() {
       ? "leave"
       : ""
   );
-
   await setDoc(doc(db, "attendance", `${tradeCode}_${today}`), { data: attendance });
   alert("Attendance submitted!");
   await window.showStudentsList();
 };
-
 function updateSummary(attendanceArr) {
   document.getElementById("totalStudents").textContent = attendanceArr.length;
   document.getElementById("totalPresent").textContent = attendanceArr.filter(x => x === "present").length;
   document.getElementById("totalAbsent").textContent = attendanceArr.filter(x => x === "absent").length;
   document.getElementById("totalLeave").textContent = attendanceArr.filter(x => x === "leave").length;
 }
-
 window.showRecords = async function() {
   const tradeCode = document.getElementById('recordsTradeSelector').value;
   const rawDate = document.getElementById('recordsDateSelector').value;
@@ -254,7 +195,6 @@ window.showRecords = async function() {
   if (!tradeCode) {
     const studentsSnapshot = await getDocs(collection(db, 'students'));
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
-
     const attendanceSnapshot = await getDocs(collection(db, 'attendance'));
     const attendanceMap = {};
     attendanceSnapshot.forEach(docSnap => {
@@ -263,73 +203,50 @@ window.showRecords = async function() {
         attendanceMap[trade] = docSnap.data().data || [];
       }
     });
-
     students.forEach(student => {
       const attendanceForTrade = attendanceMap[student.tradeCode] || [];
       student.status = attendanceForTrade.length > 0 ? attendanceForTrade[students.indexOf(student)] || "" : "";
     });
-
   } else {
     const studentsQuery = query(collection(db, 'students'), where('tradeCode', '==', tradeCode));
     const studentsSnapshot = await getDocs(studentsQuery);
     studentsSnapshot.forEach(docSnap => students.push({ id: docSnap.id, ...docSnap.data() }));
-
     const attendanceDoc = await getDoc(doc(db, "attendance", `${tradeCode}_${date}`));
     const attendance = attendanceDoc.exists() ? attendanceDoc.data().data : [];
-
     for (let i = 0; i < students.length; i++) {
       students[i].status = attendance[i] || "";
     }
   }
-
   let present = students.filter(s => s.status === "present");
   let absent = students.filter(s => s.status === "absent");
   let leave = students.filter(s => s.status === "leave");
-
   window.lastReportData = {present, absent, leave};
-
   function makeTable(list, statusLabel) {
     if (list.length === 0) return `<strong>${statusLabel}</strong><br><em>No students</em><br>`;
     let html = `<strong>${statusLabel}</strong><table border="1" cellspacing="0" cellpadding="4" style="margin-bottom:18px;">
       <tr style="background:#eee;">
-        <th>Trade</th>
-        <th>Name</th>
-        <th>Mobile</th>
-        <th>Admission Date</th>
-        <th>Shift</th>
-        <th>Unit</th>
-        <th>Status</th>
+        <th>Trade</th> <th>Name</th> <th>Mobile</th> <th>Admission Date</th> <th>Shift</th> <th>Unit</th> <th>Status</th>
       </tr>`;
     list.forEach(stu => {
       html += `<tr>
-        <td>${stu.tradeCode}</td>
-        <td>${stu.name}</td>
-        <td>${stu.mobile}</td>
-        <td>${stu.admission}</td>
-        <td>${stu.shift}</td>
-        <td>${stu.unit}</td>
-        <td>${statusLabel}</td>
+        <td>${stu.tradeCode}</td> <td>${stu.name}</td> <td>${stu.mobile}</td> <td>${stu.admission}</td>
+        <td>${stu.shift}</td> <td>${stu.unit}</td> <td>${statusLabel}</td>
       </tr>`;
     });
     html += `</table>`;
     return html;
   }
-
   document.getElementById('recordsTable').innerHTML =
     makeTable(present, "Present") +
     makeTable(absent, "Absent") +
     makeTable(leave, "Leave");
 };
-
 window.downloadPdf = function(status) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const data = window.lastReportData || {present:[], absent:[], leave:[]};
   const listData = data[status] || [];
-  if (listData.length === 0) {
-    alert(`No ${status} records to export`);
-    return;
-  }
+  if (listData.length === 0) { alert(`No ${status} records to export`); return; }
   const columns = [
     { header: 'Trade', dataKey: 'tradeCode' },
     { header: 'Name', dataKey: 'name' },
@@ -349,20 +266,14 @@ window.downloadPdf = function(status) {
   doc.save(`${status}_attendance_report.pdf`);
 };
 
+// AUTH
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    loginError.style.display = 'none';
-  } catch (err) {
-    loginError.style.display = 'block';
-    loginError.textContent = err.message;
-  }
+  try { await signInWithEmailAndPassword(auth, email, password); loginError.style.display = 'none'; }
+  catch (err) { loginError.style.display = 'block'; loginError.textContent = err.message; }
 };
-
 logoutBtn.onclick = () => { signOut(auth); };
-
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     loginContainer.style.display = 'none';
