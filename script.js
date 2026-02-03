@@ -219,4 +219,28 @@ async function showStudentsList() {
       </div>`;
     list.appendChild(li);
   });
+
+   /* =======================
+   UI POPUP FUNCTIONS
+======================= */
+
+window.showAddTradeForm = function () {
+  document.getElementById("addTradePopup").style.display = "flex";
+};
+
+window.showAddStudentForm = function () {
+  document.getElementById("addStudentPopup").style.display = "flex";
+};
+
+window.showRemoveTradeForm = function () {
+  document.getElementById("removeTradePopup").style.display = "flex";
+};
+
+window.closePopup = function () {
+  document.getElementById("addTradePopup").style.display = "none";
+  document.getElementById("addStudentPopup").style.display = "none";
+  document.getElementById("removeTradePopup").style.display = "none";
+};
+
 }
+
